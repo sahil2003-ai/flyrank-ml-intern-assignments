@@ -1,1 +1,133 @@
-PASTE-YOUR-DEPLOYED-PAPER-URL-HERE
+FlyRank ML Internship — Capstone Research Paper
+
+1. Question
+
+Which pages should be reviewed first for refresh, expansion, protection, pruning, or monitoring?
+
+This capstone builds a ranked decision-support queue using observable search-performance signals. It does not claim to predict Google's ranking algorithm or prove that a refresh causes recovery.
+
+2. Data
+
+The analysis uses the fixed FlyRank warehouse release flyrank_pseudonymized_warehouse_release_v20260703.
+
+Primary table: fact_content_daily_performance
+
+Grain: daily × client × content
+
+Feature window: February 2026
+
+Future outcome window: March 2026
+
+Minimum GSC coverage: 14 measured days in each window
+
+The release is an unbalanced panel and GSC measurements are not present on every daily row. Pseudonymized IDs are used only for joins/grouping. Client names, domains, raw URLs, raw queries, titles, credentials, private data, product decision outputs, and future-window metrics are excluded from model features.
+
+3. Methodology
+
+Feature vector
+
+February-only observable features:
+
+impressions
+
+clicks
+
+CTR
+
+measured-day count
+
+normalized daily impressions
+
+days since last update
+
+Label
+
+A row receives is_declining_label = 1 when normalized daily March impressions are at least 20% below normalized daily February impressions, after minimum measurement coverage.
+
+Baseline
+
+A transparent score:
+
+60% staleness + 40% log-scaled visibility
+
+The baseline is a prioritization rule, not a causal model.
+
+Model
+
+Random Forest classifier with:
+
+250 trees
+
+max depth 8
+
+minimum leaf size 10
+
+balanced subsampling
+
+random seed 42
+
+Validation
+
+The main split is grouped by client using an 80/20 holdout. The same held-out rows are used for baseline and model comparison.
+
+4. Results
+
+The notebook computes:
+
+ROC AUC
+
+Average Precision
+
+Precision@20
+
+Precision@50
+
+These values are intentionally generated at runtime from the gated warehouse rather than hard-coded. The reported comparison is only valid after the notebook has been executed against the specified release.
+
+5. Limitations
+
+The work is observational. It cannot establish:
+
+a causal effect of refreshing content;
+
+a Google ranking algorithm factor;
+
+why a page's traffic changed;
+
+that every high-ranked page should actually be refreshed.
+
+The decline threshold is an operational definition. Seasonality, competition, business changes, and unmeasured content quality can affect the outcome.
+
+6. Ranked recommendations
+
+The final output is a ranked queue containing:
+
+rank
+
+pseudonymized content ID
+
+modeled decline probability
+
+suggested action
+
+reason code
+
+current visibility
+
+staleness
+
+The highest-ranked items should be reviewed first, but a human should confirm relevance, intent, business value, temporary traffic effects, and content quality.
+
+7. Artifacts
+
+The capstone notebook produces:
+
+outputs/capstone_top20_queue.csv
+
+outputs/capstone_probability_distribution.png
+
+The starter outputs/refresh_queue_sample.csv is used only as a queue-shape/reference artifact and is not used as the modeling source.
+
+8. Safe conclusion
+
+The evidence supports using observable current-window search signals as inputs to a ranked review workflow. The Random Forest provides a nonlinear comparison against a transparent baseline, while grouped validation reduces the risk of overly optimistic results from client overlap. The resulting queue should be treated as directional decision support with human review.
